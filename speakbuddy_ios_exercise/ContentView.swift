@@ -15,6 +15,38 @@ struct MonthlyScores: Equatable, Identifiable {
 }
 
 struct ContentView: View {
+    private enum LayoutSize {
+        case small
+        case medium
+        case large
+
+        init(availableWidth: CGFloat) {
+            switch availableWidth {
+            case ..<390:
+                self = .small
+            case ..<440:
+                self = .medium
+            default:
+                self = .large
+            }
+        }
+
+        var scale: CGFloat {
+            switch self {
+            case .small: return 0.88
+            case .medium: return 1
+            case .large: return 1.1
+            }
+        }
+
+        var spacing: CGFloat {
+            switch self {
+            case .small: return 4
+            case .medium, .large: return 8 * scale
+            }
+        }
+    }
+
     @State private var animatedValues: [UUID: Double] = [:]
     private var data: [MonthlyScores] = [
         MonthlyScores(period: "現在", score: 50),
@@ -24,82 +56,103 @@ struct ContentView: View {
     ]
     
     var body: some View {
-        GeometryReader { geometry in
-            let chartWidth = min(geometry.size.width, 290)
-            let chartHeight = chartWidth * (300 / 270)
+        ZStack {
+            LinearGradient(
+                stops: [
+                    .init(color: .background, location: 0.2),
+                    .init(color: .white, location: 0.5)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
-            ZStack {
-                LinearGradient(
-                    stops: [
-                        .init(color: .background, location: 0.2),
-                        .init(color: .white, location: 0.5)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                
-                VStack {
+            GeometryReader { geometry in
+                let layoutSize = LayoutSize(availableWidth: geometry.size.width)
+                let scale = layoutSize.scale
+                let horizontalPadding: CGFloat = 16
+                let contentWidth = max(0, min(geometry.size.width - horizontalPadding * 2, 400 * scale))
+                let chartWidth = max(0, min(290 * scale, contentWidth - 40 * scale))
+
+                VStack(spacing: layoutSize.spacing) {
                     Button(action: {
                         print("閉じる")
                     }) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .heavy))
-                            .frame(width: 38, height: 38)
+                            .font(.system(size: 14 * scale, weight: .heavy))
+                            .frame(width: 38 * scale, height: 38 * scale)
                             .background(.white, in: Circle())
                             .shadow(color: .black.opacity(0.25), radius: 16, x: 0, y: 0)
                     }
                     .buttonStyle(.plain)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                    .offset(x: -20, y: -6)
-                    
+                    .padding(.top, 8 * scale)
+
                     Text("Hello\nSpeakBUDDY")
-                        .font(.system(size: 36, weight: .bold))
+                        .font(.system(size: 36 * scale, weight: .bold))
                         .foregroundStyle(.text)
                         .multilineTextAlignment(.center)
-                        .padding(.bottom, 54)
-                    
-                    ZStack(alignment: .topLeading) {
-                        Chart(data) { item in
-                            BarMark(
-                                x: .value("期間", item.period),
-                                y: .value("スコア", animatedValues[item.id] ?? 0),
-                                width: .fixed(48)
-                            )
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.startGraphGradient, .endGraphGradient],
-                                    startPoint: .top,
-                                    endPoint: .bottom
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: 0)
+
+                    GeometryReader { chartGeometry in
+                        let preferredHeight = chartWidth * 300 / 270 + 60 * scale
+                        let fit = min(1, max(0, chartGeometry.size.height) / preferredHeight)
+                        let chartScale = scale * fit
+                        let fittedChartWidth = chartWidth * fit
+
+                        ZStack(alignment: .topLeading) {
+                            Chart(data) { item in
+                                BarMark(
+                                    x: .value("期間", item.period),
+                                    y: .value("スコア", animatedValues[item.id] ?? 0),
+                                    width: .fixed(48 * chartScale)
                                 )
-                            )
-                        }
-                        .frame(width: chartWidth, height: chartHeight)
-                        .chartXAxis {
-                            AxisMarks {
-                                AxisValueLabel()
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.text)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.startGraphGradient, .endGraphGradient],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
                             }
+                            .frame(width: fittedChartWidth, height: fittedChartWidth * 300 / 270)
+                            .chartXAxis {
+                                AxisMarks {
+                                    AxisValueLabel()
+                                        .font(.system(size: 14 * chartScale, weight: .bold))
+                                        .foregroundStyle(.text)
+                                }
+                            }
+                            .chartYAxis(.hidden)
+                            .chartYScale(domain: 0...250)
+                            .padding(20 * chartScale)
+                            .padding(.top, 20 * chartScale)
+
+                            Image(.protty)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 185 * chartScale)
+                                .padding(.top, 8 * chartScale)
                         }
-                        .chartYAxis(.hidden)
-                        .chartYScale(domain: 0...250)
-                        .padding()
-                        
-                        Image(.protty)
-                            .imageScale(.large)
-                            .foregroundStyle(.tint)
-                            .offset(x: -10, y: -30)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .padding(.bottom, 12)
-                    
-                    VStack(spacing: 4) {
+                    .frame(
+                        idealHeight: chartWidth * 300 / 270 + 60 * scale,
+                        maxHeight: chartWidth * 300 / 270 + 60 * scale
+                    )
+                    .layoutPriority(-1)
+
+                    Spacer(minLength: 0)
+
+                    VStack(spacing: 4 * scale) {
                         Text("スピークバディで")
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.system(size: 22 * scale, weight: .semibold))
                             .foregroundStyle(.text)
-                        
+
                         Text("レベルアップ")
-                            .font(.system(size: 32, weight: .semibold))
+                            .font(.system(size: 32 * scale, weight: .semibold))
                             .foregroundStyle(
                                 LinearGradient(
                                     colors: [.startTextGradient, .endTextGradient],
@@ -108,25 +161,39 @@ struct ContentView: View {
                                 )
                             )
                     }
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(alignment: .center)
-                    .padding(.bottom, 24)
-                    
+
+                    Spacer(minLength: 0)
+
                     Button(action: {
                         animatedValues = [:]
                         animateBars()
                     }) {
                         Text("プランに登録する")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 18 * scale, weight: .semibold))
                             .foregroundStyle(.white)
                             .padding()
-                            .frame(width: 350, height: 58)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 58 * scale)
                             .background(
                                 Capsule().fill(.base)
                             )
+                            .overlay {
+                                Capsule().strokeBorder(.white, lineWidth: 1)
+                            }
                     }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 0)
+
+                    Spacer(minLength: 0)
                 }
+                .frame(width: contentWidth)
+                .padding(.horizontal, horizontalPadding)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             animateBars()
         }
