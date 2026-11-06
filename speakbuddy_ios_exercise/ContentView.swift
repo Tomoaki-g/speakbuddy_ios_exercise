@@ -112,7 +112,8 @@ struct ContentView: View {
                     .padding(.bottom, 24)
                     
                     Button(action: {
-                        print("ボタンが押されました")
+                        animatedValues = [:]
+                        animateBars()
                     }) {
                         Text("プランに登録する")
                             .font(.system(size: 18, weight: .semibold))
