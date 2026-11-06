@@ -11,7 +11,7 @@ import Charts
 struct MonthlyScores: Equatable, Identifiable {
     let id = UUID()
     let period: String
-    var score: Double
+    let score: Double
 }
 
 struct ContentView: View {
@@ -48,7 +48,7 @@ struct ContentView: View {
     }
 
     @State private var animatedValues: [UUID: Double] = [:]
-    private var data: [MonthlyScores] = [
+    private let data: [MonthlyScores] = [
         MonthlyScores(period: "現在", score: 50),
         MonthlyScores(period: "3ヶ月", score: 80),
         MonthlyScores(period: "1年", score: 180),
@@ -72,7 +72,6 @@ struct ContentView: View {
                 let scale = layoutSize.scale
                 let horizontalPadding: CGFloat = 16
                 let contentWidth = max(0, min(geometry.size.width - horizontalPadding * 2, 400 * scale))
-                let chartWidth = max(0, min(290 * scale, contentWidth - 40 * scale))
 
                 VStack(spacing: layoutSize.spacing) {
                     Button(action: {
@@ -96,51 +95,11 @@ struct ContentView: View {
 
                     Spacer(minLength: 0)
 
-                    GeometryReader { chartGeometry in
-                        let preferredHeight = chartWidth * 300 / 270 + 60 * scale
-                        let fit = min(1, max(0, chartGeometry.size.height) / preferredHeight)
-                        let chartScale = scale * fit
-                        let fittedChartWidth = chartWidth * fit
-
-                        ZStack(alignment: .topLeading) {
-                            Chart(data) { item in
-                                BarMark(
-                                    x: .value("期間", item.period),
-                                    y: .value("スコア", animatedValues[item.id] ?? 0),
-                                    width: .fixed(48 * chartScale)
-                                )
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.startGraphGradient, .endGraphGradient],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                            }
-                            .frame(width: fittedChartWidth, height: fittedChartWidth * 300 / 270)
-                            .chartXAxis {
-                                AxisMarks {
-                                    AxisValueLabel()
-                                        .font(.system(size: 14 * chartScale, weight: .bold))
-                                        .foregroundStyle(.text)
-                                }
-                            }
-                            .chartYAxis(.hidden)
-                            .chartYScale(domain: 0...250)
-                            .padding(20 * chartScale)
-                            .padding(.top, 20 * chartScale)
-
-                            Image(.protty)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 185 * chartScale)
-                                .padding(.top, 8 * chartScale)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                    .frame(
-                        idealHeight: chartWidth * 300 / 270 + 60 * scale,
-                        maxHeight: chartWidth * 300 / 270 + 60 * scale
+                    ScoreChartView(
+                        data: data,
+                        animatedValues: animatedValues,
+                        availableWidth: contentWidth,
+                        scale: scale
                     )
                     .layoutPriority(-1)
 
@@ -162,7 +121,6 @@ struct ContentView: View {
                             )
                     }
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(alignment: .center)
 
                     Spacer(minLength: 0)
 
@@ -183,7 +141,6 @@ struct ContentView: View {
                                 Capsule().strokeBorder(.white, lineWidth: 1)
                             }
                     }
-                    .fixedSize(horizontal: false, vertical: true)
                     .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 0)
 
                     Spacer(minLength: 0)
@@ -209,6 +166,70 @@ struct ContentView: View {
                 }
             }
         }
+    }
+}
+
+private struct ScoreChartView: View {
+    let data: [MonthlyScores]
+    let animatedValues: [UUID: Double]
+    let availableWidth: CGFloat
+    let scale: CGFloat
+
+    private let baseChartWidth: CGFloat = 290
+    private let heightToWidthRatio: CGFloat = 300.0 / 270.0
+    private let chartPadding: CGFloat = 20
+    private let additionalTopPadding: CGFloat = 20
+
+    var body: some View {
+        let horizontalPadding = chartPadding * 2 * scale
+        let verticalPadding = (chartPadding * 2 + additionalTopPadding) * scale
+        let chartWidth = max(0, min(baseChartWidth * scale, availableWidth - horizontalPadding))
+        let preferredHeight = chartWidth * heightToWidthRatio + verticalPadding
+
+        GeometryReader { geometry in
+            let fit = preferredHeight > 0
+                ? min(1, max(0, geometry.size.height) / preferredHeight)
+                : 0
+            let chartScale = scale * fit
+            let fittedChartWidth = chartWidth * fit
+
+            ZStack(alignment: .topLeading) {
+                Chart(data) { item in
+                    BarMark(
+                        x: .value("期間", item.period),
+                        y: .value("スコア", animatedValues[item.id] ?? 0),
+                        width: .fixed(48 * chartScale)
+                    )
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.startGraphGradient, .endGraphGradient],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                }
+                .frame(width: fittedChartWidth, height: fittedChartWidth * heightToWidthRatio)
+                .chartXAxis {
+                    AxisMarks {
+                        AxisValueLabel()
+                            .font(.system(size: 14 * chartScale, weight: .bold))
+                            .foregroundStyle(.text)
+                    }
+                }
+                .chartYAxis(.hidden)
+                .chartYScale(domain: 0...250)
+                .padding(chartPadding * chartScale)
+                .padding(.top, additionalTopPadding * chartScale)
+
+                Image(.protty)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 185 * chartScale)
+                    .padding(.top, 8 * chartScale)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxHeight: preferredHeight)
     }
 }
 
