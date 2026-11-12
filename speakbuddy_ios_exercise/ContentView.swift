@@ -9,9 +9,10 @@ import SwiftUI
 import Charts
 
 struct MonthlyScores: Identifiable {
-    let id = UUID()
     let period: String
     let score: Double
+    
+    var id: String { period }
 }
 
 struct ContentView: View {
@@ -47,7 +48,7 @@ struct ContentView: View {
         }
     }
 
-    @State private var animatedValues: [UUID: Double] = [:]
+    @State private var animatedValues: [String: Double] = [:]
     @State private var replayID = 0
     
     private let data: [MonthlyScores] = [
@@ -189,7 +190,7 @@ struct ContentView: View {
 
 private struct ScoreChartView: View {
     let data: [MonthlyScores]
-    let animatedValues: [UUID: Double]
+    let animatedValues: [String: Double]
     let availableWidth: CGFloat
     let scale: CGFloat
 
