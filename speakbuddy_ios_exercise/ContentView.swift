@@ -8,7 +8,7 @@
 import SwiftUI
 import Charts
 
-struct MonthlyScores: Equatable, Identifiable {
+struct MonthlyScores: Identifiable {
     let id = UUID()
     let period: String
     let score: Double
@@ -48,6 +48,8 @@ struct ContentView: View {
     }
 
     @State private var animatedValues: [UUID: Double] = [:]
+    @State private var replayID = 0
+    
     private let data: [MonthlyScores] = [
         MonthlyScores(period: "現在", score: 50),
         MonthlyScores(period: "3ヶ月", score: 80),
@@ -125,8 +127,7 @@ struct ContentView: View {
                     Spacer(minLength: 0)
 
                     Button(action: {
-                        animatedValues = [:]
-                        animateBars()
+                        replayID += 1
                     }) {
                         Text("プランに登録する")
                             .font(.system(size: 18 * scale, weight: .semibold))
@@ -148,23 +149,40 @@ struct ContentView: View {
                 .frame(width: contentWidth)
                 .padding(.horizontal, horizontalPadding)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .task(id: replayID) {
+                    await animateBars()
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            animateBars()
-        }
     }
     
-    private func animateBars() {
-        for (index, item) in data.enumerated() {
-            let delay = Double(index) * 0.10
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4 + delay) {
+    @MainActor
+    private func animateBars() async {
+        guard !Task.isCancelled else { return }
+        
+        // リセットをアニメーションさせない
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+
+        withTransaction(transaction) {
+            animatedValues = [:]
+        }
+
+        do {
+            for (index, item) in data.enumerated() {
+                let delay: Duration = index == 0 ? .milliseconds(400) : .milliseconds(100)
+                
+                try await Task.sleep(for: delay)
+                
+                try Task.checkCancellation()
+                
                 withAnimation(.spring(response: 0.8, dampingFraction: 1.0)) {
                     animatedValues[item.id] = item.score
                 }
             }
+        } catch {
+            return
         }
     }
 }
