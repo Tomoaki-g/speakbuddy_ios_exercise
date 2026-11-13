@@ -88,6 +88,17 @@ struct ContentView: View {
                         replayID += 1
                     }
                 }
+
+                ScreenContent(data: data, animatedValues: animatedValues, style: .small) {
+                    replayID += 1
+                }
+                .compactLayout
+
+                ScrollView {
+                    ScreenContent(data: data, animatedValues: animatedValues, style: .small) {
+                        replayID += 1
+                    }
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 18)
@@ -138,44 +149,36 @@ struct ScreenContent: View {
         VStack(spacing: 0) {
             mainContent
 
-            Button(action: onRegister) {
-                Text("プランに登録する")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Capsule().fill(.base))
-                    .overlay {
-                        Capsule().strokeBorder(.white, lineWidth: 1)
-                    }
-            }
-            .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-            .padding(.horizontal, style == .large ? 48 : 0)
+            registrationButton
+                .frame(maxWidth: 688)
+                .padding(.horizontal, style == .large ? 48 : 0)
         }
+    }
+
+    var compactLayout: some View {
+        VStack(spacing: 0) {
+            closeButton
+
+            HStack(spacing: 24) {
+                ScoreChartView(data: data, animatedValues: animatedValues, scale: 0.72)
+                    .frame(width: 232)
+
+                VStack(spacing: 12) {
+                    title
+                    message
+                    registrationButton
+                }
+                .frame(width: style.contentWidth)
+            }
+        }
+        .fixedSize(horizontal: true, vertical: true)
     }
 
     private var mainContent: some View {
         VStack(spacing: style.spacing) {
-            Button(action: {
-                print("閉じる")
-            }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14 * style.scale, weight: .heavy))
-                    .foregroundStyle(.text)
-                    .frame(width: 38 * style.scale, height: 38 * style.scale)
-                    .background(.white, in: Circle())
-                    .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
-            }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.top, 8 * style.scale)
+            closeButton
 
-            Text("Hello\nSpeakBUDDY")
-                .font(.system(size: 36 * style.scale, weight: .bold))
-                .foregroundStyle(.text)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+            title
                 .padding(.bottom, 12 * style.scale)
 
             Spacer()
@@ -187,27 +190,71 @@ struct ScreenContent: View {
             )
             .layoutPriority(-1)
 
-            VStack(spacing: 4 * style.scale) {
-                Text("スピークバディで")
-                    .font(.system(size: 22 * style.scale, weight: .semibold))
-                    .foregroundStyle(.text)
-
-                Text("レベルアップ")
-                    .font(.system(size: 32 * style.scale, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.startTextGradient, .endTextGradient],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.top, style.spacing)
-            .padding(.bottom, 14 + style.spacing)
+            message
+                .padding(.top, style.spacing)
+                .padding(.bottom, 14 + style.spacing)
         }
         .frame(width: style.contentWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var closeButton: some View {
+        Button(action: {
+            print("閉じる")
+        }) {
+            Image(systemName: "xmark")
+                .font(.system(size: 14 * style.scale, weight: .heavy))
+                .foregroundStyle(.text)
+                .frame(width: 38 * style.scale, height: 38 * style.scale)
+                .background(.white, in: Circle())
+                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.top, 8 * style.scale)
+    }
+
+    private var title: some View {
+        Text("Hello\nSpeakBUDDY")
+            .font(.system(size: 36 * style.scale, weight: .bold))
+            .foregroundStyle(.text)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var message: some View {
+        VStack(spacing: 4 * style.scale) {
+            Text("スピークバディで")
+                .font(.system(size: 22 * style.scale, weight: .semibold))
+                .foregroundStyle(.text)
+
+            Text("レベルアップ")
+                .font(.system(size: 32 * style.scale, weight: .semibold))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.startTextGradient, .endTextGradient],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var registrationButton: some View {
+        Button(action: onRegister) {
+            Text("プランに登録する")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(Capsule().fill(.base))
+                .overlay {
+                    Capsule().strokeBorder(.white, lineWidth: 1)
+                }
+        }
+        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
     }
 }
 
