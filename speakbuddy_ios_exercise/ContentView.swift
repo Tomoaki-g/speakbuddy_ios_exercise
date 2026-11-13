@@ -150,12 +150,12 @@ struct ContentView: View {
                 .frame(width: contentWidth)
                 .padding(.horizontal, horizontalPadding)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .task(id: replayID) {
-                    await animateBars()
-                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: replayID) {
+            await animateBars()
+        }
     }
     
     @MainActor
