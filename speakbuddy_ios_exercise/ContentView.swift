@@ -8,10 +8,11 @@
 import SwiftUI
 import Charts
 
-struct MonthlyScores: Equatable, Identifiable {
-    let id = UUID()
+struct MonthlyScores: Identifiable {
     let period: String
     let score: Double
+
+    var id: String { period }
 }
 
 enum ScreenStyle {
@@ -54,15 +55,16 @@ enum ScreenStyle {
     }
 }
 
-let data: [MonthlyScores] = [
-    MonthlyScores(period: "現在", score: 50),
-    MonthlyScores(period: "3ヶ月", score: 80),
-    MonthlyScores(period: "1年", score: 180),
-    MonthlyScores(period: "2年", score: 250),
-]
-
 struct ContentView: View {
-    @State private var animatedValues: [UUID: Double] = [:]
+    @State private var animatedValues: [String: Double] = [:]
+    @State private var replayID = 0
+
+    private let data: [MonthlyScores] = [
+        MonthlyScores(period: "現在", score: 50),
+        MonthlyScores(period: "3ヶ月", score: 80),
+        MonthlyScores(period: "1年", score: 180),
+        MonthlyScores(period: "2年", score: 250),
+    ]
 
     var body: some View {
         ZStack {
@@ -83,8 +85,7 @@ struct ContentView: View {
             ViewThatFits(in: [.horizontal, .vertical]) {
                 ForEach([ScreenStyle.large, .medium, .small], id: \.self) { style in
                     ScreenContent(data: data, animatedValues: animatedValues, style: style) {
-                        animatedValues = [:]
-                        animateBars(animatedValues: $animatedValues)
+                        replayID += 1
                     }
                 }
             }
@@ -92,15 +93,44 @@ struct ContentView: View {
             .padding(.horizontal, 18)
             .padding(.bottom, 16)
         }
-        .onAppear {
-            animateBars(animatedValues: $animatedValues)
+        .task(id: replayID) {
+            await animateBars()
+        }
+    }
+
+    @MainActor
+    private func animateBars() async {
+        guard !Task.isCancelled else { return }
+
+        // リセットをアニメーションさせない
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+
+        withTransaction(transaction) {
+            animatedValues = [:]
+        }
+
+        do {
+            for (index, item) in data.enumerated() {
+                let delay: Duration = index == 0 ? .milliseconds(400) : .milliseconds(100)
+
+                try await Task.sleep(for: delay)
+
+                try Task.checkCancellation()
+
+                withAnimation(.spring(response: 0.8, dampingFraction: 1.0)) {
+                    animatedValues[item.id] = item.score
+                }
+            }
+        } catch {
+            return
         }
     }
 }
 
 struct ScreenContent: View {
     let data: [MonthlyScores]
-    let animatedValues: [UUID: Double]
+    let animatedValues: [String: Double]
     let style: ScreenStyle
     let onRegister: () -> Void
 
@@ -183,7 +213,7 @@ struct ScreenContent: View {
 
 private struct ScoreChartView: View {
     let data: [MonthlyScores]
-    let animatedValues: [UUID: Double]
+    let animatedValues: [String: Double]
     let scale: CGFloat
 
     private let baseChartWidth: CGFloat = 290
@@ -233,18 +263,6 @@ private struct ScoreChartView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .frame(height: preferredHeight)
-    }
-}
-
-func animateBars(animatedValues: Binding<[UUID: Double]>) {
-    for (index, item) in data.enumerated() {
-        let delay = Double(index) * 0.10
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4 + delay) {
-            withAnimation(.spring(response: 0.8, dampingFraction: 1.0)) {
-                animatedValues.wrappedValue[item.id] = item.score
-            }
-        }
     }
 }
 
