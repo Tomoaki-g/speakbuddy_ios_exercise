@@ -44,6 +44,14 @@ enum ScreenStyle {
         case .medium, .large: return 12 * scale
         }
     }
+
+    var contentWidth: CGFloat {
+        switch self {
+        case .small: 280
+        case .medium: 354
+        case .large: 540
+        }
+    }
 }
 
 let data: [MonthlyScores] = [
@@ -60,28 +68,30 @@ struct ContentView: View {
         ZStack {
             LinearGradient(
                 stops: [
-                    .init(color: .background, location: 0.2),
-                    .init(color: .white, location: 0.5)
+                    .init(color: .background, location: 0),
+                    .init(color: .background.opacity(0.6), location: 0.25),
+                    .init(color: .background.opacity(0.25), location: 0.5),
+                    .init(color: .background.opacity(0.05), location: 0.75),
+                    .init(color: .white, location: 1)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+            .background(.white)
             .ignoresSafeArea()
 
-            GeometryReader { geometry in
-                ViewThatFits {
-                    if geometry.size.width >= 600 {
-                        ScreenContent(animatedValues: $animatedValues, style: .large, geometry: geometry)
+            ViewThatFits(in: [.horizontal, .vertical]) {
+                ForEach([ScreenStyle.large, .medium, .small], id: \.self) { style in
+                    ScreenContent(data: data, animatedValues: animatedValues, style: style) {
+                        animatedValues = [:]
+                        animateBars(animatedValues: $animatedValues)
                     }
-
-                    ScreenContent(animatedValues: $animatedValues, style: .medium, geometry: geometry)
-
-                    ScreenContent(animatedValues: $animatedValues, style: .small, geometry: geometry)
                 }
-                .frame(width: geometry.size.width, height: geometry.size.height)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 16)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             animateBars(animatedValues: $animatedValues)
         }
@@ -89,20 +99,43 @@ struct ContentView: View {
 }
 
 struct ScreenContent: View {
-    @Binding var animatedValues: [UUID: Double]
+    let data: [MonthlyScores]
+    let animatedValues: [UUID: Double]
     let style: ScreenStyle
-    let geometry: GeometryProxy
+    let onRegister: () -> Void
 
     var body: some View {
+        VStack(spacing: 0) {
+            mainContent
+
+            Button(action: onRegister) {
+                Text("プランに登録する")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(Capsule().fill(.base))
+                    .overlay {
+                        Capsule().strokeBorder(.white, lineWidth: 1)
+                    }
+            }
+            .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+            .padding(.horizontal, style == .large ? 48 : 0)
+        }
+    }
+
+    private var mainContent: some View {
         VStack(spacing: style.spacing) {
             Button(action: {
                 print("閉じる")
             }) {
                 Image(systemName: "xmark")
                     .font(.system(size: 14 * style.scale, weight: .heavy))
+                    .foregroundStyle(.text)
                     .frame(width: 38 * style.scale, height: 38 * style.scale)
                     .background(.white, in: Circle())
-                    .shadow(color: .black.opacity(0.25), radius: 16, x: 0, y: 0)
+                    .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
             }
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .trailing)
@@ -120,12 +153,9 @@ struct ScreenContent: View {
             ScoreChartView(
                 data: data,
                 animatedValues: animatedValues,
-                availableWidth: max(0, min(geometry.size.width - 32, 400 * style.scale)),
                 scale: style.scale
             )
             .layoutPriority(-1)
-
-            Spacer()
 
             VStack(spacing: 4 * style.scale) {
                 Text("スピークバディで")
@@ -143,32 +173,10 @@ struct ScreenContent: View {
                     )
             }
             .fixedSize(horizontal: false, vertical: true)
-
-            Spacer()
-
-            Button(action: {
-                animatedValues = [:]
-                animateBars(animatedValues: $animatedValues)
-            }) {
-                Text("プランに登録する")
-                    .font(.system(size: 18 * style.scale, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 58 * style.scale)
-                    .background(
-                        Capsule().fill(.base)
-                    )
-                    .overlay {
-                        Capsule().strokeBorder(.white, lineWidth: 1)
-                    }
-            }
-            .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 0)
-
-            Spacer(minLength: 0)
+            .padding(.top, style.spacing)
+            .padding(.bottom, 14 + style.spacing)
         }
-        .frame(width: max(0, min(geometry.size.width - 32, 400 * style.scale)))
-        .padding(.horizontal, 16)
+        .frame(width: style.contentWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -176,7 +184,6 @@ struct ScreenContent: View {
 private struct ScoreChartView: View {
     let data: [MonthlyScores]
     let animatedValues: [UUID: Double]
-    let availableWidth: CGFloat
     let scale: CGFloat
 
     private let baseChartWidth: CGFloat = 290
@@ -186,9 +193,8 @@ private struct ScoreChartView: View {
     private let chartTopAdjustment: CGFloat = 10
 
     var body: some View {
-        let horizontalPadding = chartPadding * 2 * scale
         let verticalPadding = (chartPadding * 2 + additionalTopPadding) * scale + chartTopAdjustment
-        let chartWidth = max(0, min(baseChartWidth * scale, availableWidth - horizontalPadding))
+        let chartWidth = baseChartWidth * scale
         let preferredHeight = chartWidth * heightToWidthRatio + verticalPadding
 
         ZStack(alignment: .topLeading) {
@@ -223,7 +229,7 @@ private struct ScoreChartView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 190 * scale)
-                .offset(x: -16 * scale, y: -8 * scale)
+                .offset(x: -16 * scale, y: -12 * scale)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .frame(height: preferredHeight)
