@@ -18,6 +18,7 @@ struct MonthlyScores: Identifiable {
 enum ScreenStyle {
     case small
     case medium
+    case wide
     case large
 
     init(availableWidth: CGFloat) {
@@ -35,6 +36,7 @@ enum ScreenStyle {
         switch self {
         case .small: return 0.88
         case .medium: return 1
+        case .wide: return 1.2
         case .large: return 1.4
         }
     }
@@ -42,7 +44,7 @@ enum ScreenStyle {
     var spacing: CGFloat {
         switch self {
         case .small: return 4
-        case .medium, .large: return 12 * scale
+        case .medium, .wide, .large: return 12 * scale
         }
     }
 
@@ -50,13 +52,16 @@ enum ScreenStyle {
         switch self {
         case .small: 280
         case .medium: 354
+        case .wide: 440
         case .large: 540
         }
     }
 
     var maxContentHeight: CGFloat {
         switch self {
-        case .small, .medium: return .infinity
+        case .small: return .infinity
+        case .medium: return 820
+        case .wide: return 910
         case .large: return 1120
         }
     }
@@ -90,6 +95,9 @@ struct ContentView: View {
             .ignoresSafeArea()
 
             ViewThatFits(in: [.horizontal, .vertical]) {
+                screenContent(style: .wide)
+                    .frame(minWidth: 1200)
+
                 ForEach([ScreenStyle.large, .medium, .small], id: \.self) { style in
                     screenContent(style: style)
                 }
@@ -170,7 +178,7 @@ struct ScreenContent: View {
             mainContent
 
             registrationButton
-                .frame(maxWidth: 688)
+                .frame(maxWidth: style == .wide ? 760 : 688)
                 .padding(.horizontal, style == .large ? 48 : 0)
         }
         .frame(maxHeight: style.maxContentHeight)
@@ -271,11 +279,11 @@ struct ScreenContent: View {
     private var registrationButton: some View {
         Button(action: onRegister) {
             Text("プランに登録する")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: style == .wide ? 21 : 18, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding()
                 .frame(maxWidth: .infinity)
-                .frame(height: 56)
+                .frame(height: style == .wide ? 64 : 56)
                 .background(Capsule().fill(.base))
                 .overlay {
                     Capsule().strokeBorder(.white, lineWidth: 1)
