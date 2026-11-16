@@ -91,20 +91,14 @@ struct ContentView: View {
 
             ViewThatFits(in: [.horizontal, .vertical]) {
                 ForEach([ScreenStyle.large, .medium, .small], id: \.self) { style in
-                    ScreenContent(data: data, animatedValues: animatedValues, style: style) {
-                        replayID += 1
-                    }
+                    screenContent(style: style)
                 }
 
-                ScreenContent(data: data, animatedValues: animatedValues, style: .small) {
-                    replayID += 1
-                }
-                .compactLayout
+                screenContent(style: .small)
+                    .compactLayout
 
                 ScrollView {
-                    ScreenContent(data: data, animatedValues: animatedValues, style: .small) {
-                        replayID += 1
-                    }
+                    screenContent(style: .small)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -116,7 +110,25 @@ struct ContentView: View {
         }
     }
 
-    @MainActor
+    private func screenContent(style: ScreenStyle) -> ScreenContent {
+        ScreenContent(
+            data: data,
+            animatedValues: animatedValues,
+            replayID: replayID,
+            style: style,
+            onRegister: replayBars
+        )
+    }
+
+    private func replayBars() {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            animatedValues = [:]
+            replayID += 1
+        }
+    }
+
     private func animateBars() async {
         guard !Task.isCancelled else { return }
 
@@ -149,6 +161,7 @@ struct ContentView: View {
 struct ScreenContent: View {
     let data: [MonthlyScores]
     let animatedValues: [String: Double]
+    let replayID: Int
     let style: ScreenStyle
     let onRegister: () -> Void
 
@@ -168,8 +181,13 @@ struct ScreenContent: View {
             closeButton
 
             HStack(spacing: 24) {
-                ScoreChartView(data: data, animatedValues: animatedValues, scale: 0.72)
-                    .frame(width: 232)
+                ScoreChartView(
+                    data: data,
+                    animatedValues: animatedValues,
+                    replayID: replayID,
+                    scale: 0.72
+                )
+                .frame(width: 232)
 
                 VStack(spacing: 12) {
                     title
@@ -194,6 +212,7 @@ struct ScreenContent: View {
             ScoreChartView(
                 data: data,
                 animatedValues: animatedValues,
+                replayID: replayID,
                 scale: style.scale
             )
             .layoutPriority(-1)
@@ -269,6 +288,7 @@ struct ScreenContent: View {
 private struct ScoreChartView: View {
     let data: [MonthlyScores]
     let animatedValues: [String: Double]
+    let replayID: Int
     let scale: CGFloat
 
     private let baseChartWidth: CGFloat = 290
@@ -297,6 +317,7 @@ private struct ScoreChartView: View {
                     )
                 )
             }
+            .id(replayID)
             .frame(width: chartWidth, height: chartWidth * heightToWidthRatio)
             .chartXAxis {
                 AxisMarks {
