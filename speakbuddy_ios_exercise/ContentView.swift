@@ -53,6 +53,13 @@ enum ScreenStyle {
         case .large: 540
         }
     }
+
+    var maxContentHeight: CGFloat {
+        switch self {
+        case .small, .medium: return .infinity
+        case .large: return 1120
+        }
+    }
 }
 
 struct ContentView: View {
@@ -153,6 +160,7 @@ struct ScreenContent: View {
                 .frame(maxWidth: 688)
                 .padding(.horizontal, style == .large ? 48 : 0)
         }
+        .frame(maxHeight: style.maxContentHeight)
     }
 
     var compactLayout: some View {
