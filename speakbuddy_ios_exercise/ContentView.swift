@@ -21,17 +21,6 @@ enum ScreenStyle {
     case wide
     case large
 
-    init(availableWidth: CGFloat) {
-        switch availableWidth {
-        case ..<390:
-            self = .small
-        case ..<440:
-            self = .medium
-        default:
-            self = .large
-        }
-    }
-
     var scale: CGFloat {
         switch self {
         case .small: return 0.88
