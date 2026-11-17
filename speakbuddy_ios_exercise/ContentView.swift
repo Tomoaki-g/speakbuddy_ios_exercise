@@ -212,7 +212,6 @@ struct ScreenContent: View {
                 replayID: replayID,
                 scale: style.scale
             )
-            .layoutPriority(-1)
 
             message
                 .padding(.top, style.spacing)
